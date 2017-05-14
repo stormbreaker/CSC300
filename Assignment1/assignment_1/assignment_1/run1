@@ -1,0 +1,9 @@
+echo running $1 on $2
+rm -f  $1 $1.$2.stdout
+g++ -std=c++11 $1.C -g -lm -o $1
+date
+$1 < $2 > $1.$2.stdout
+date
+echo ------------- doing diff ec $1 ----------------
+diff -s ec.$2.stdout  $1.$2.stdout | head -20
+echo ====================================================

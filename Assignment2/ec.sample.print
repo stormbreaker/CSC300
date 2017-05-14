@@ -1,0 +1,14 @@
+double size is 8
+int size is 4
+Record size is 24
+               key    left   right  parent  height  file loc 
+record 0        542       1       4      -1       2       0  
+record 1        275       2       3       0       1       1  
+record 2        216      -1      -1       1       0       2  
+record 3        345      -1      -1       1       0       3  
+record 4        836       5      -1       0       1       4  
+record 5        712      -1      -1       4       0       5  
+Inorder traversal:  
+216  275  345  542  712  836  
+6 values printed
+Tree values are in order

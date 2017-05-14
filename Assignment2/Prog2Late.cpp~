@@ -1,0 +1,412 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+
+using namespace std;
+
+struct avl_tree_node
+{
+	int key_value;
+	int left_child;
+	int right_child;
+	int height;
+	int parent;
+	int file_loc;
+};
+const int C_NULL = -1;
+const int C_NODE_SIZE = sizeof(avl_tree_node);
+
+void insert(fstream &file, avl_tree_node &node, avl_tree_node &root, avl_tree_node &right, avl_tree_node &left, int currloc, bool flag);
+void bal(fstream &file, avl_tree_node &node, avl_tree_node &root, avl_tree_node &right, avl_tree_node &left);
+
+
+int main(int argc, char** argv)
+{
+	ifstream fin;
+	fstream finout;
+
+	avl_tree_node innode, root, left, right;
+	
+	int count = 0;
+	bool flag = false;
+	int currloc = 0;
+
+	fin.open(argv[1]);
+	finout.open(argv[2], ios::in | ios::out | ios::ate | ios::trunc | ios:: binary);
+	while (fin >> innode.key_value)
+	{
+		innode.file_loc = count;
+		flag = false;
+		//set root to default C_NULL
+		root.key_value = C_NULL;
+		root.left_child = C_NULL;
+		root.right_child = C_NULL;
+		root.height = C_NULL;
+		root.parent = C_NULL;
+		root.file_loc = C_NULL;
+		currloc = 0;		
+
+		if (count == 0)
+		{
+			flag = true;
+		}
+		insert(finout, innode, root, right, left, currloc, flag);
+		count++;
+	}	
+	finout.close();
+	fin.close();
+	return 0;
+}
+
+void insert(fstream &file, avl_tree_node &node, avl_tree_node &root, avl_tree_node &right, avl_tree_node &left, int currloc, bool flag)
+{
+	// inserting portion
+	if (flag == true)// base case 
+	{
+		node.left_child = C_NULL;
+		node.right_child = C_NULL;
+		node.height = 0;
+		node.parent = root.file_loc;
+			
+		
+		file.seekg(node.file_loc * C_NODE_SIZE);
+		file.write((char*) &node, sizeof(avl_tree_node));//write the node
+		file.seekg(node.file_loc * C_NODE_SIZE);
+		file.read((char*) &root, sizeof(avl_tree_node)); //root at the very bottom
+		return;
+	}
+	if (currloc != C_NULL)
+	{
+		file.seekg(currloc * C_NODE_SIZE);
+		file.read((char*) &root, sizeof(avl_tree_node));
+	}
+
+	if (node.key_value < root.key_value)
+	{
+		if (root.left_child == C_NULL)
+		{
+			flag = true;
+			root.left_child = node.file_loc;
+			file.seekg(root.file_loc * C_NODE_SIZE);
+			file.write((char*) &root, sizeof(avl_tree_node));
+			insert(file, node, root, right, left, currloc, flag);
+		}
+		else
+		{
+			insert(file, node, root, right, left, root.left_child, flag);
+		}
+	}
+	
+	else if(node.key_value > root.key_value)
+	{
+		if (root.right_child == C_NULL)
+		{
+			flag = true;
+			root.right_child = node.file_loc;
+			file.seekg(root.file_loc * C_NODE_SIZE);
+			file.write((char*) &root, sizeof(avl_tree_node));
+			insert(file, node, root, right, left, currloc, flag);
+		}
+		else
+		{
+			insert(file, node, root, right, left, root.right_child, flag);
+		}
+	}
+	cout << "after all insert: " << root.key_value << endl;
+	// end inserting portion
+
+	// begin height adjustment portion
+
+	
+	if (root.parent != C_NULL)
+	{
+		bal(file, node, root, right, left);
+	}
+	else if (root.parent == C_NULL)
+	{
+	//	rootbal(file, node, root, right, left);
+	}	
+/*	if(root.parent != C_NULL)
+	{
+		file.seekg(root.parent * C_NODE_SIZE);
+		file.read((char*) &node, sizeof(avl_tree_node));
+		node.height = root.height + 1;
+		file.seekg(node.file_loc * C_NODE_SIZE);
+		file.write((char*) &node, sizeof(avl_tree_node));
+	}
+	file.seekg(node.file_loc * C_NODE_SIZE);
+	file.read((char*) &root, sizeof(avl_tree_node));
+	// end height adjustment BUT! I think this may cause seg fault later on??
+*/
+	
+	file.seekg(root.parent * C_NODE_SIZE);
+	file.read((char*) &root, sizeof(avl_tree_node));
+	if (root.left_child != C_NULL)
+	{
+		file.seekg(root.left_child * C_NODE_SIZE);
+		file.read((char*) &left, sizeof(avl_tree_node));
+	}
+	else
+	{
+		left.height = C_NULL;
+	}
+	if(root.right_child != C_NULL)
+	{
+		file.seekg(root.right_child * C_NODE_SIZE);
+		file.read((char*) &right, sizeof(avl_tree_node));
+	}
+	else
+	{
+		right.height = C_NULL;
+	}
+	if (left.height >= right.height && left.height >= root.height)
+	{
+		root.height = left.height + 1;
+	}
+	else if (right.height > left.height && right.height >= root.height)
+	{
+		root.height = right.height + 1;
+	}
+	cout << root.height << endl;
+	file.seekg(root.file_loc * C_NODE_SIZE);
+	file.write((char*) &root, sizeof(avl_tree_node));
+
+
+
+	
+}
+
+void bal(fstream &file, avl_tree_node &node, avl_tree_node &root, avl_tree_node &right, avl_tree_node &left)
+{
+	int rootheight = 0;//height for node called root
+	int otherheight = 0;//height for either left or right
+	
+	if (root.left_child != C_NULL)
+	{
+		file.seekg(root.left_child * C_NODE_SIZE);
+		file.read((char*) &left, sizeof(avl_tree_node));
+	}
+	else
+	{
+		left.height = C_NULL;
+	}
+	if (root.right_child != C_NULL)
+	{
+		file.seekg(root.right_child * C_NODE_SIZE);
+		file.read((char*) &right, sizeof(avl_tree_node));
+	}
+	else
+	{
+		right.height = C_NULL;
+	}
+	if (left.height - right.height > 1 || left.height - right.height < C_NULL)
+	{
+		if (left.height >= right.height) //left cases
+		{
+			if(left.right_child != C_NULL)
+			{
+				file.seekg(left.right_child * C_NODE_SIZE);
+				file.read((char*) &right, sizeof(avl_tree_node));
+			}
+			else
+			{
+				right.file_loc = C_NULL;
+				right.height = C_NULL;
+			}
+			if (node.height >= right.height) // left left case
+			{
+				cout << "llnr" << endl;
+				rootheight = right.height + 1;
+				if(left.left_child != C_NULL)
+				{
+					file.seekg(left.left_child * C_NODE_SIZE);
+					file.read((char*) &node, sizeof(avl_tree_node));
+				}
+				else
+				{
+					node.file_loc = C_NULL;
+					node.height = C_NULL;
+				}
+				otherheight = node.height + 1;
+				right.parent = root.file_loc;
+				left.right_child = root.file_loc;
+				left.parent = root.parent;
+				root.parent = left.file_loc;
+				root.left_child = right.file_loc;
+				if (root.file_loc != C_NULL)
+				{
+					file.seekg(root.file_loc * C_NODE_SIZE);
+					file.write((char*) &root, sizeof(avl_tree_node));
+				}
+				if (left.file_loc != C_NULL)
+				{
+					file.seekg(left.file_loc * C_NODE_SIZE);
+					file.write((char*) &left, sizeof(avl_tree_node));
+				}
+				if (right.file_loc != C_NULL)
+				{
+					file.seekg(right.file_loc * C_NODE_SIZE);
+					file.write((char*) &right, sizeof(avl_tree_node));
+				}
+				if (root.right_child != C_NULL)
+				{
+					file.seekg(root.right_child * C_NODE_SIZE);
+					file.read((char*) &right, sizeof(avl_tree_node));
+				}
+				else
+				{
+					right.file_loc = C_NULL;
+					right.height = C_NULL;
+				}
+				if (rootheight < right.height)
+				{
+					rootheight = right.height + 1;
+				}
+				root.height = rootheight;
+				if (root.height >= node.height)
+				{
+					left.height = root.height + 1;
+				}
+				else if (node.height > root.height)
+				{
+					left.height = node.height + 1;
+				}
+				if (left.parent != C_NULL)
+				{
+					file.seekg(left.parent * C_NODE_SIZE);
+					file.read((char*) &right, sizeof(avl_tree_node));
+				}
+				else
+				{
+					right.file_loc = C_NULL;
+				}
+				right.left_child = left.file_loc;
+				if (right.file_loc != C_NULL)
+				{
+					file.seekg(right.file_loc * C_NODE_SIZE);
+					file.write((char*) &right, sizeof(avl_tree_node));
+				}
+				
+				if (root.file_loc != C_NULL)
+				{
+					file.seekg(root.file_loc * C_NODE_SIZE);
+					file.write((char*) &root, sizeof(avl_tree_node));
+				}
+				if (left.file_loc != C_NULL)
+				{
+					file.seekg(left.file_loc * C_NODE_SIZE);
+					file.write((char*) &left, sizeof(avl_tree_node));
+				}
+				if (node.file_loc != C_NULL)
+				{
+					file.seekg(node.file_loc * C_NODE_SIZE);
+					file.write((char*) &node, sizeof(avl_tree_node));
+				}			
+			}// end left left case
+		}//end left case
+		else if (right.height > left.height)//right cases
+		{
+			if (right.left_child != C_NULL)
+			{
+				file.seekg(right.left_child * C_NODE_SIZE);
+				file.read((char*) &left, sizeof(avl_tree_node));
+			}
+			else
+			{
+				left.file_loc = C_NULL;
+				left.height = C_NULL;
+			}
+			if (node.height >= left.height) //right right case
+			{
+				cout << "rrnr" << endl;
+				rootheight = left.height + 1;
+				if(right.right_child != C_NULL)
+				{
+					file.seekg(right.right_child * C_NODE_SIZE);
+					file.read((char*) &node, sizeof(avl_tree_node));
+				}
+				else
+				{
+					node.file_loc = C_NULL;
+					node.height = C_NULL;
+				}
+				otherheight = node.height + 1;
+				left.parent = root.file_loc;
+				right.left_child = root.file_loc;
+				right.parent = root.parent;
+				root.parent - right.file_loc;
+				root.right_child = left.file_loc;
+				if (root.file_loc != C_NULL)
+				{
+					file.seekg(root.file_loc * C_NODE_SIZE);
+					file.write((char*) &root, sizeof(avl_tree_node));
+				}
+				if (right.file_loc != C_NULL)
+				{
+					file.seekg(right.file_loc * C_NODE_SIZE);
+					file.write((char*) &right, sizeof(avl_tree_node));
+				}
+				if (left.file_loc != C_NULL)
+				{
+					file.seekg(left.file_loc * C_NODE_SIZE);
+					file.write((char*) &left, sizeof(avl_tree_node));
+				}
+				if (root.left_child != C_NULL)
+				{
+					file.seekg(root.left_child * C_NODE_SIZE);
+					file.read((char*) &left, sizeof(avl_tree_node));
+				}
+				else
+				{
+					left.file_loc = C_NULL;
+					left.height = C_NULL;
+				}
+				if (rootheight < left.height)
+				{
+					rootheight = left.height + 1;
+				}
+				root.height = rootheight;
+				if(root.height >= node.height)
+				{
+					right.height = root.height + 1;
+				}
+				else if (node.height > root.height)
+				{
+					right.height = node.height + 1;
+				}
+				if (right.parent != C_NULL)
+				{
+					file.seekg(right.parent * C_NODE_SIZE);
+					file.read((char*) &left, sizeof(avl_tree_node));
+				}
+				else
+				{
+					left.file_loc = C_NULL;
+				}
+				left.right_child = right.file_loc;
+				if (left.file_loc != C_NULL)
+				{
+					file.seekg(left.file_loc * C_NODE_SIZE);
+					file.write((char*) &left, sizeof(avl_tree_node));
+				}
+
+				if (root.file_loc != C_NULL)
+				{
+					file.seekg(root.file_loc * C_NODE_SIZE);
+					file.write((char*) &root, sizeof(avl_tree_node));
+				}
+				if (right.file_loc != C_NULL)
+				{
+					file.seekg(right.file_loc * C_NODE_SIZE);
+					file.write((char*) &right, sizeof(avl_tree_node));
+				}
+				if(node.file_loc != C_NULL)
+				{
+					file.seekg(node.file_loc * C_NODE_SIZE);
+					file.write((char*) &node, sizeof(avl_tree_node));
+				}
+			}//end right right case
+		}
+	}
+	
+}

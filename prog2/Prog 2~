@@ -1,0 +1,12 @@
+#include<iostream>
+#incluse<fstream>
+
+using namespace std;
+
+int main(int argc, char *argv[])
+{
+  fstream treeFile;
+  treeFile.open("output", ios::binary|ios::in|ios::app|ios::out);
+  
+  return 0;
+}
